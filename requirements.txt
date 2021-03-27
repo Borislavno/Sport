@@ -1,0 +1,6 @@
+aiogram>=2.11.2,<3.0
+environs~=8.0.0
+apscheduler
+sqlalchemy
+gino
+asyncpg
