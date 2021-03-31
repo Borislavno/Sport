@@ -68,13 +68,13 @@ class Week(db.Model):
     id = Column(Integer, primary_key=True)
     progress = Column(ForeignKey('progress.id', onupdate='RESTRICT'))
     begin = Column(Date(), nullable=True)
-    day_one = Column(String(7), nullable='True')
-    day_two = Column(String(7), nullable='True')
-    day_three = Column(String(7), nullable='True')
-    day_four = Column(String(7), nullable='True')
-    day_five = Column(String(7), nullable='True')
-    day_six = Column(String(7), nullable='True')
-    day_seven = Column(String(7), nullable='True')
+    day_one = Column(Integer, nullable='True')
+    day_two = Column(Integer, nullable='True')
+    day_three = Column(Integer, nullable='True')
+    day_four = Column(Integer, nullable='True')
+    day_five = Column(Integer, nullable='True')
+    day_six = Column(Integer, nullable='True')
+    day_seven = Column(Integer, nullable='True')
 
 
 class Trainer(db.Model):
@@ -143,11 +143,12 @@ class UserActivity(db.Model):
     query: sql.Select
 
     id = Column(Integer(), primary_key=True)
-    set = Column(ForeignKey('sets.id', ondelete='CASCADE'),nullable=True)
+    set = Column(ForeignKey('sets.id', ondelete='CASCADE'))
+    name = Column(String(64))
     user = Column(ForeignKey('users.id', ondelete='CASCADE'))
-    begin = Column(Date,nullable=True)
+    begin = Column(Date)
     last_training = Column(Date, nullable=True)
-    time = Column(Integer(),nullable=True)
+    time = Column(Integer())
 
 
 class Set(db.Model):
@@ -182,7 +183,7 @@ class Exercise(db.Model):
     id = Column(Integer(), primary_key=True)
     set = Column(ForeignKey('sets.id', ondelete='CASCADE'))
     practice = Column(ForeignKey('practices.id', ondelete='CASCADE'))
-    repeats_1 = Column(Integer(),nullable=True)
+    repeats_1 = Column(Integer())
     repeats_2 = Column(Integer(), nullable=True)
     repeats_3 = Column(Integer(), nullable=True)
     repeats_4 = Column(Integer(), nullable=True)
