@@ -59,11 +59,10 @@ async def user_timezone(message: Message, state: FSMContext):
             time = int(user_time) + 24
         timezone = time - now.hour
         await state.update_data(timezone=timezone)
-
         for key, val in month.items():
             if now.month == key:
                 month = val
-        await message.answer(f'Подтверди следующие данные: \nСейчас {day} {month} {user_time}:{now.minute}',
+        await message.answer(f'Подтверди следующие данные: \nСейчас {day} {month},{user_time} часов {now.minute} минут',
                              reply_markup=InlineKeyboardMarkup(
                                  inline_keyboard=[
                                      [

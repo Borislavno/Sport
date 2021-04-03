@@ -7,7 +7,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQu
 from aiogram.utils.callback_data import CallbackData
 
 from loader import dp, bot
-from utils.db_api.gino import Goal, User, Trainer, Place, Progress, Week, db
+from utils.db_api.gino import Goal, User, Trainer, Place, Progress, Week, db, UserActivity
 from utils.states import Newbie
 
 gender_cd = CallbackData('user', 'sex')
@@ -305,13 +305,18 @@ async def save_reg_user(call: CallbackQuery, state: FSMContext):
         id=total+1,
         progress=progress.id,
         begin=now.date(),
-        day_one=int(data['weight'])
+        day_one=(data['weight'])
     )
     await progress.update(week_1=week.id).apply()
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text='На главную', callback_data='main')],
         ]
+    )
+    total = await db.func.count(UserActivity.id).gino.scalar() or 0
+    user_activity = await UserActivity.create(
+        id=total+1,
+        user= call.from_user.id
     )
     reply = 'Молодец! Это твой первый шаг к здоровому и красивому телу! ' \
             'Пока я составляю для тебя подходящую программу тренировок, можешь почитать полезную информацию в ' \
