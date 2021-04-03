@@ -22,54 +22,55 @@ async def training(dp: Dispatcher):
         user = await User.get(one.user)
         set = await Set.get(one.set)
         now = datetime.utcnow()
-        user_timezone = now + timedelta(hours=user.timezone)
-        if user_timezone.date() == one.begin and one.last_training==None:
-            if datetime.time(user_timezone + timedelta(minutes=30)).hour == int(one.time) and \
-                    datetime.time(user_timezone + timedelta(minutes=30)).minute == 0:
-                await dp.bot.send_message(chat_id=one.user, text='Через 30 минут начнется твоя тренировка!'
-                                                                 'Не пропусти!')
-            if datetime.time(user_timezone).hour == int(one.time) and \
-                    datetime.time(user_timezone).minute == 0:
-                await dp.bot.send_message(chat_id=one.user, text='Пора тренироваться!', reply_markup=
-                InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [
-                            InlineKeyboardButton(text='Начнем', callback_data=
-                            training_cd.new(
-                                set_id=set.id
-                            ))
-                        ],
-                        [
-                            InlineKeyboardButton(text='Сегодня не получится',
-                                                 callback_data='no_training')
-                        ]
-                    ]
-                ))
-        if user.banned == False:
-            days = list(user.days_of_week)
-            for day in days:
-                if user_timezone.isoweekday() == int(day):
-                    if datetime.time(user_timezone + timedelta(minutes=30)).hour == int(one.time) and \
-                            datetime.time(user_timezone + timedelta(minutes=30)).minute == 0:
-                        await dp.bot.send_message(chat_id=one.user, text='Через 30 минут начнется твоя тренировка!'
-                                                                         'Не пропусти!')
-                    if datetime.time(user_timezone).hour == int(one.time) and \
-                            datetime.time(user_timezone).minute == 0:
-                        await dp.bot.send_message(chat_id=one.user, text='Пора тренироваться!', reply_markup=
-                        InlineKeyboardMarkup(
-                            inline_keyboard=[
-                                [
-                                    InlineKeyboardButton(text='Начнем', callback_data=
-                                    training_cd.new(
-                                        set_id=set.id
-                                    ))
-                                ],
-                                [
-                                    InlineKeyboardButton(text='Сегодня не получится',
-                                                         callback_data='no_training')
-                                ]
+        user_timezone = now + timedelta(hours=user.timezone) or 0
+        if user_timezone!= 0:
+            if user_timezone.date() == one.begin and one.last_training == None:
+                if datetime.time(user_timezone + timedelta(minutes=30)).hour == int(one.time) and \
+                        datetime.time(user_timezone + timedelta(minutes=30)).minute == 0:
+                    await dp.bot.send_message(chat_id=one.user, text='Через 30 минут начнется твоя тренировка!'
+                                                                     'Не пропусти!')
+                if datetime.time(user_timezone).hour == int(one.time) and \
+                        datetime.time(user_timezone).minute == 0:
+                    await dp.bot.send_message(chat_id=one.user, text='Пора тренироваться!', reply_markup=
+                    InlineKeyboardMarkup(
+                        inline_keyboard=[
+                            [
+                                InlineKeyboardButton(text='Начнем', callback_data=
+                                training_cd.new(
+                                    set_id=set.id
+                                ))
+                            ],
+                            [
+                                InlineKeyboardButton(text='Сегодня не получится',
+                                                     callback_data='no_training')
                             ]
-                        ))
+                        ]
+                    ))
+            if user.banned == False:
+                days = list(user.days_of_week)
+                for day in days:
+                    if user_timezone.isoweekday() == int(day):
+                        if datetime.time(user_timezone + timedelta(minutes=30)).hour == int(one.time) and \
+                                datetime.time(user_timezone + timedelta(minutes=30)).minute == 0:
+                            await dp.bot.send_message(chat_id=one.user, text='Через 30 минут начнется твоя тренировка!'
+                                                                             'Не пропусти!')
+                        if datetime.time(user_timezone).hour == int(one.time) and \
+                                datetime.time(user_timezone).minute == 0:
+                            await dp.bot.send_message(chat_id=one.user, text='Пора тренироваться!', reply_markup=
+                            InlineKeyboardMarkup(
+                                inline_keyboard=[
+                                    [
+                                        InlineKeyboardButton(text='Начнем', callback_data=
+                                        training_cd.new(
+                                            set_id=set.id
+                                        ))
+                                    ],
+                                    [
+                                        InlineKeyboardButton(text='Сегодня не получится',
+                                                             callback_data='no_training')
+                                    ]
+                                ]
+                            ))
 
 
 @dp.callback_query_handler(text='no_training')
@@ -103,7 +104,7 @@ async def begin_training(call: CallbackQuery, state: FSMContext):
             exercise = await Exercise.get(repeat.exercise)
             practice = await Practice.get(exercise.practice)
             video = await call.message.answer_animation(animation=practice.image)
-            text = f'Упражнение:\n{practice.name}\nПовторить {repeat.repeats} раз\n'
+            text = f'Повторить {repeat.repeats} раз\n'
             user_activity = await Activity.query.where((Activity.user == call.from_user.id)&(Activity.exercise==exercise.id)&(Activity.repeat == repeat.id)).gino.first()
             if user_activity.weight != None:
                 text = text + f'На прошлой тренировке ты брал вес {user_activity.weight} кг'
@@ -145,7 +146,7 @@ async def begin_training(call: CallbackQuery, state: FSMContext):
         exercise = await Exercise.get(repeat.exercise)
         practice = await Practice.get(exercise.practice)
         video = await call.message.answer_animation(animation=practice.image)
-        text = f'Упражнение:\n{practice.name}\nПовторить {repeat.repeats} раз\n'
+        text = f'Повторить {repeat.repeats} раз\n'
         user_activity = await Activity.query.where(
             (Activity.user == call.from_user.id) and (Activity.repeat == repeat.id)).gino.first() or 0
         if user_activity.weight != None:

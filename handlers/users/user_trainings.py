@@ -17,11 +17,24 @@ time_set = CallbackData('time', 'id_set', 'begin', 'hour', 'confirm')
 @dp.callback_query_handler(text='my_training')
 async def check_training(call: CallbackQuery):
     user = await User.get(call.from_user.id)
-    user_activity = await UserActivity.query.where(UserActivity.user == call.from_user.id).gino.first() or None
-    if user_activity != None:
-        now = datetime.today()
-        set = await Set.get(int(user_activity.set)) or None
-        if user_activity.last_training == None:
+    user_activity = await UserActivity.query.where(UserActivity.user == call.from_user.id).gino.first()
+    if user_activity.begin == None and user_activity.last_training == None:
+        await call.message.answer('У вас нет программы тренировок, можете сделать ее самостоятельно'
+                                  ' или мы сами составим специально для Вас',
+                                  reply_markup=InlineKeyboardMarkup(
+                                      inline_keyboard=[
+                                          [
+                                              InlineKeyboardButton(text='Подобрать программу',
+                                                                   callback_data=random_cd.new(
+                                                                       user_goal=user.goal))
+                                          ],
+                                          [
+                                              InlineKeyboardButton(text='На главную', callback_data='main')
+                                          ]
+                                      ]))
+    else:
+        set = await Set.get(user_activity.set) or 0
+        if user_activity.begin != None and user_activity.last_training == None:
             await call.message.answer(f'Ваша первая тренировка начнется {(user_activity.begin).day}.'
                                       f'{(user_activity.begin).month} в {user_activity.time}:00',
                                       reply_markup=
@@ -64,27 +77,15 @@ async def check_training(call: CallbackQuery):
                                               ]
                                           ]
                                       ))
-    else:
-        await call.message.answer('У вас нет программы тренировок, можете сделать ее самостоятельно'
-                                  ' или мы сами составим специально для Вас',
-                                  reply_markup=InlineKeyboardMarkup(
-                                      inline_keyboard=[
-                                          [
-                                              InlineKeyboardButton(text='Подобрать программу',
-                                                                   callback_data=random_cd.new(
-                                                                       user_goal=user.goal))
-                                          ],
-                                          [
-                                              InlineKeyboardButton(text='На главную', callback_data='main')
-                                          ]
-                                      ]))
 
 
 @dp.callback_query_handler(random_cd.filter())
 async def random_sets(call: CallbackQuery, callback_data: dict):
     user_goal = int(callback_data.get('user_goal'))
-    total = await db.func.count((Set.goal == user_goal)&(Set.user==0)).gino.scalar() or 0
-    if total == 0:
+    user = await User.get(call.from_user.id)
+    all_set = await Set.query.where((Set.place==user.place)&(Set.goal==user_goal)).gino.all() or 0
+    numbers = []
+    if all_set == 0:
         await call.message.answer('На данный момент нет тренировок', reply_markup=InlineKeyboardMarkup
             (inline_keyboard=[
             [
@@ -92,9 +93,11 @@ async def random_sets(call: CallbackQuery, callback_data: dict):
             ]
         ]))
     else:
-        random_number = random.randint(1, total)
+        for one in all_set:
+            numbers.append(one.id)
+        random_number = random.choice(numbers)
         random_set = await Set.get(random_number)
-        text = f'Программа\nДлительность курса : {random_set.days}\n'
+        text = f'Программа:\n{random_set.name}\nДлительность курса : {random_set.days} дней\n'
         await call.message.answer(text=text, reply_markup=
         InlineKeyboardMarkup(
             inline_keyboard=[
@@ -153,7 +156,7 @@ async def confirm_set(call: CallbackQuery, callback_data: dict):
                                               ))
                                       ],
                                       [
-                                          InlineKeyboardButton(text='Назад', callback_data='training')
+                                          InlineKeyboardButton(text='Назад', callback_data='my_training')
                                       ]
                                   ]
                               ))
@@ -184,23 +187,24 @@ async def update_user_activity(call: CallbackQuery, callback_data: dict):
     begin = (callback_data.get('begin'))
     begin = datetime.strptime(begin, '%Y-%m-%d').date()
     hour = int(callback_data.get('hour'))
-    exercises = await Exercise.query.where(Exercise.set==id_set).gino.all()
+    exercises = await Exercise.query.where(Exercise.set == id_set).gino.all()
     for one in exercises:
         exercise = await Exercise.get(one.id)
-        list = (exercise.repeats_1,exercise.repeats_2,exercise.repeats_3,exercise.repeats_4,exercise.repeats_5)
+        list = (exercise.repeats_1, exercise.repeats_2, exercise.repeats_3, exercise.repeats_4, exercise.repeats_5)
         for two in list:
             repeat = await Repeat.get(two) or 0
-            if repeat!=0:
-                total = await db.func.count(Activity.id).gino.scalar()+1
+            if repeat != 0:
+                total = await db.func.count(Activity.id).gino.scalar() + 1
                 await Activity.create(id=total,
                                       set=id_set,
                                       user=call.from_user.id,
                                       exercise=one.id,
                                       repeat=repeat.id)
-    await UserActivity.create(set=id_set,
-                              user=call.from_user.id,
-                              begin=begin,
-                              time=hour)
+    user_activity = await UserActivity.query.where(UserActivity.user == call.from_user.id).gino.first()
+    await user_activity.update(set=id_set,
+                               user=call.from_user.id,
+                               begin=begin,
+                               time=hour).apply()
 
     await call.message.answer('Поздравляю! Теперь у тебя есть собственная программа, по которой будем заниматься!',
                               reply_markup=InlineKeyboardMarkup(

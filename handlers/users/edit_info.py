@@ -2,12 +2,14 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardBut
 from aiogram.utils.callback_data import CallbackData
 
 from loader import dp
-from utils.db_api.gino import User, Place, Goal
+from utils.db_api.gino import User, Place, Goal, Set, UserActivity, Activity, Exercise, Repeat, db
 
 goals_cd = CallbackData('update_goal', 'goal')
 place_cd = CallbackData('update_place', 'place')
 time_cd = CallbackData('update_time', 'time')
 days_cd = CallbackData('update_days', 'days')
+sets_cd = CallbackData('update_set','set')
+hour_cd = CallbackData('update_hour', 'hour')
 
 
 @dp.callback_query_handler(text='edit_info')
@@ -31,7 +33,11 @@ async def menu_info(call: CallbackQuery):
             ],
             [
                 InlineKeyboardButton(text='Изменить количество тренировок', callback_data='edit_training_times'),
-                InlineKeyboardButton(text='Изменить дни тренировки', callback_data='choice_days_of_training')
+                InlineKeyboardButton(text='Изменить дни тренировки', callback_data='choice_days_of_training'),
+                InlineKeyboardButton(text='Изменить время тренировок', callback_data='edit_time_training')
+            ],
+            [
+                InlineKeyboardButton(text='Тестовая кнопка Изменить программу',callback_data='edit_user_set')
             ],
             [
                 InlineKeyboardButton(text='На главную', callback_data='main')
@@ -124,3 +130,80 @@ async def edit_time(call: CallbackQuery, callback_data: dict):
                                       ]
                                   ]
                               ))
+
+@dp.callback_query_handler(text='edit_user_set')
+async def check_sets(call: CallbackQuery):
+    sets = await Set.query.gino.all()
+    markup = InlineKeyboardMarkup(row_width=1)
+    for one in sets:
+        goal = await Goal.get(one.goal)
+        markup.insert(
+            InlineKeyboardButton(text=f'{goal.name}',
+                                 callback_data=sets_cd.new(set=one.id))
+        )
+    markup.row(
+        InlineKeyboardButton(text='Назад',callback_data='edit_info')
+    )
+    await call.message.answer('Выбери Программу упражения',reply_markup=markup)
+
+@dp.callback_query_handler(sets_cd.filter())
+async def edit_sets(call: CallbackQuery,callback_data: dict):
+    set = int(callback_data.get('set'))
+    user = await UserActivity.query.where(UserActivity.user==call.from_user.id).gino.first()
+    await user.update(set=set).apply()
+    set = await Set.get(set) or 0
+    all = await Activity.query.where((Activity.user==user.id)&(Activity.set==set.id)).gino.first() or 0
+    if all == 0:
+        exerices = (set.exception_1, set.exception_2, set.exception_3, set.exception_4, set.exception_5,
+                    set.exception_6, set.exception_7, set.exception_8, set.exception_9, set.exception_10)
+        for exercise in exerices:
+            exercise = await Exercise.get(exercise) or 0
+            if exercise != 0:
+                repeats = (
+                    exercise.repeats_1, exercise.repeats_2, exercise.repeats_3, exercise.repeats_4,
+                    exercise.repeats_5)
+                for repeat in repeats:
+                    repeat = await Repeat.get(repeat) or 0
+                    if repeat != 0:
+                        total = await db.func.count(Activity.id).gino.scalar()
+                        await Activity.create(
+                            id=total + 1,
+                            set=set.id,
+                            user=call.from_user.id,
+                            exercise=exercise.id,
+                            repeat=repeat.id,
+                            weight=None)
+    await call.message.answer('Программа изменена',reply_markup=
+                              InlineKeyboardMarkup(
+                                  inline_keyboard=[
+                                      [
+                                          InlineKeyboardButton(text='На главную', callback_data='main')
+                                      ]
+                                  ]))
+
+@dp.callback_query_handler(text='edit_time_training')
+async def update_time_training(call: CallbackQuery):
+    markup = InlineKeyboardMarkup(row_width=4)
+    for time in range(25):
+        if len(str(time)) < 2:
+            time = f'0{time}'
+        markup.insert(InlineKeyboardButton(
+            text=f'{time}:00',
+            callback_data=hour_cd.new(hour=time)
+        ))
+    markup.row(InlineKeyboardButton(text='Назад', callback_data='edit_info'))
+    await call.message.answer('Выбери, во сколько у тебя будут проходить тренировки', reply_markup=markup)
+
+
+@dp.callback_query_handler(hour_cd.filter())
+async def edit_time_training(call: CallbackQuery, callback_data: dict):
+    time = int(callback_data.get('hour'))
+    user = await UserActivity.query.where(UserActivity.user == call.from_user.id).gino.first()
+    await user.update(time=time).apply()
+    await call.message.answer(f'Отлично! Теперь твои тренировки будут проходить в {time}:00', reply_markup=
+    InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text='На главную', callback_data='main')
+            ]
+        ]))
