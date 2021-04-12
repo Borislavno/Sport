@@ -19,7 +19,14 @@ async def update_trainer_status(call: CallbackQuery, callback_data: dict):
     trainer = await Trainer.query.where(Trainer.user == id_trainer).gino.first()
     await trainer.update(confirmed=True).apply()
     await call.message.answer('Тренер подтвержен')
-    await bot.send_message(chat_id=id_trainer, text='Поздравляем! Ваша заявка на тренера подтверждена')
+    await bot.send_message(chat_id=id_trainer, text='Поздравляем! Ваша заявка на тренера подтверждена',
+                           reply_markup=InlineKeyboardMarkup(
+                               inline_keyboard=[
+                                   [
+                                       InlineKeyboardButton(text='На главную',callback_data='main')
+                                   ]
+                               ]
+                           ))
 
 
 @dp.callback_query_handler(delete_trainer_cd.filter())
@@ -44,12 +51,12 @@ async def test(call: CallbackQuery, state: FSMContext):
     trainer = await Trainer.query.where(Trainer.user == call.from_user.id).gino.first()
     user = await User.get(call.from_user.id)
     markup = InlineKeyboardMarkup(row_width=1)
-    if trainer.confirmed == False and user.timezone != None and user.days_of_week != None:
+    if trainer.confirmed == False:
         markup.insert(
             InlineKeyboardButton(text='Оставить заявку на тренера',
                                  callback_data='confirm_trainer')
         )
-        await call.message.answer(f'Привет {user.name}! Я должен проверить что ты достаточно классифицирован,'
+        await call.message.answer(f'Привет {user.fullname}! Я должен проверить что ты достаточно классифицирован,'
                                   f' чтобы доверить здоровье пользователю',
                                   reply_markup=markup)
     if trainer.confirmed == True and user.timezone == None and user.days_of_week == None:
@@ -57,21 +64,16 @@ async def test(call: CallbackQuery, state: FSMContext):
             InlineKeyboardButton(text='Настроить часовой пояс',
                                  callback_data='user_timezone')
         )
-        await call.message.answer(f'Привет {user.name}! Осталось настроить наши часовые пояса,'
+        await call.message.answer(f'Привет {user.fullname}! Осталось настроить наши часовые пояса,'
                                   f' чтобы могли работать слаженно', reply_markup=markup)
     if trainer.confirmed == True and user.timezone != None and user.days_of_week != None:
         markup.insert(InlineKeyboardButton(text='Мои тренировки', callback_data='my_training'))
         markup.insert(InlineKeyboardButton(text='Мои ученики', callback_data='my_stydies'))
         markup.insert(InlineKeyboardButton(text='Изменить мои данные', callback_data='edit_info'))
-        await call.message.answer(f'Привет {user.name}! Ты можешь самостоятельно составить программу для себя,'
+        await call.message.answer(f'Привет {user.fullname}! Ты можешь самостоятельно составить программу для себя,'
                                   f'посмотреть список твоих учеников, отредактировать собственные данные',
                                   reply_markup=markup)
-    if trainer.confirmed == False and user.timezone == None and user.days_of_week == None:
-        markup.insert(InlineKeyboardButton(text='Оставить заявку на тренера', callback_data='confirm_trainer'))
-        markup.insert(InlineKeyboardButton(text='Настроить часовой пояс', callback_data='user_timezone'))
-        await call.message.answer(f'Привет {user.name}! Осталось настроить наши часовые пояса,'
-                                  f' чтобы могли работать слаженно',
-                                  reply_markup=markup)
+
 
 
 @dp.message_handler(Trainers(), CommandStart())
@@ -79,32 +81,27 @@ async def trainer_menu(message: Message, state: FSMContext):
     trainer = await Trainer.query.where(Trainer.user == message.from_user.id).gino.first()
     user = await User.get(message.from_user.id)
     markup = InlineKeyboardMarkup(row_width=1)
-    if trainer.confirmed == False and user.timezone != None and user.days_of_week != None:
+    if trainer.confirmed == False:
         markup.insert(
             InlineKeyboardButton(text='Оставить заявку на тренера',callback_data='confirm_trainer')
         )
-        await message.answer(f'Привет {user.name}! Я должен проверить что ты достаточно классифицирован,'
+        await message.answer(f'Привет {user.fullname}! Я должен проверить что ты достаточно классифицирован,'
                              f' чтобы доверить здоровье пользователю',
                              reply_markup=markup)
     if trainer.confirmed == True and user.timezone == None and user.days_of_week == None:
         markup.insert(
             InlineKeyboardButton(text='Настроить часовой пояс',callback_data='user_timezone')
         )
-        await message.answer(f'Привет {user.name}! Осталось настроить наши часовые пояса,'
+        await message.answer(f'Привет {user.fullname}! Осталось настроить наши часовые пояса,'
                              f' чтобы могли работать слаженно', reply_markup=markup)
     if trainer.confirmed == True and user.timezone != None and user.days_of_week != None:
         markup.insert(InlineKeyboardButton(text='Мои тренировки', callback_data='my_training'))
         markup.insert(InlineKeyboardButton(text='Мои ученики', callback_data='my_stydies'))
         markup.insert(InlineKeyboardButton(text='Изменить мои данные', callback_data='edit_info'))
-        await message.answer(f'Привет {user.name}! Ты можешь самостоятельно составить программу для себя,'
+        await message.answer(f'Привет {user.fullname}! Ты можешь самостоятельно составить программу для себя,'
                              f'посмотреть список твоих учеников, отредактировать собственные данные',
                              reply_markup=markup)
-    else:
-        markup.insert(InlineKeyboardButton(text='Оставить заявку на тренера', callback_data='confirm_trainer'))
-        markup.insert(InlineKeyboardButton(text='Настроить часовой пояс', callback_data='user_timezone'))
-        await message.answer(f'Привет {user.name}! Осталось настроить наши часовые пояса,'
-                             f' чтобы могли работать слаженно',
-                             reply_markup=markup)
+
 
 
 @dp.callback_query_handler(Trainers(), text='Repeat', state='trainer_finish')

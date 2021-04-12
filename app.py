@@ -1,12 +1,13 @@
+from handlers.check_activity import check_user_active
 from handlers.users.progress import progress
 from handlers.users.training import training
 from loader import scheduler
 from utils.db_api import gino
-from utils.notify_admins import on_startup_notify
 
 def scheduler_jobs():
-    scheduler.add_job(training, "interval", minutes=1, args=(dp,))
+    # scheduler.add_job(training, "interval", minutes=1, args=(dp,))
     scheduler.add_job(progress, "interval", minutes=1, args=(dp,))
+    # scheduler.add_job(check_user_active, "interval", minutes=1, args=(dp,))
 
 async def on_startup(dispatcher):
     await gino.create_db(dispatcher)

@@ -1,6 +1,3 @@
-from datetime import datetime, timedelta, time
-
-list = [1,2,3,4,5]
-number = list.index(1)
-print(number)
-print(list[0])
+from datetime import timedelta, datetime
+number = '1.2'
+print(number.isdigit())

@@ -7,7 +7,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQu
 from aiogram.utils.callback_data import CallbackData
 
 from loader import dp, bot
-from utils.db_api.gino import Goal, User, Trainer, Place, Progress, Week, db
+from utils.db_api.gino import Goal, User, Trainer, Place, Progress, Week, db, UserActivity
 from utils.states import Newbie
 
 gender_cd = CallbackData('user', 'sex')
@@ -112,7 +112,7 @@ async def user_weight(message: Message, state: FSMContext):
     if weight and len(weight) <= 6:
         await state.update_data(weight=weight)
         await Newbie.Height.set()
-        reply = 'Какой у тебя рост? Напиши цифрами в сантиметрах.'
+        reply = 'Какой у тебя рост? Напиши цифрами в сантиметрах. Например 180'
         await message.answer(text=reply)
     else:
         reply = 'Пожалуйста укажи весь только цифрами.'
@@ -139,7 +139,7 @@ async def user_height(message: Message, state: FSMContext):
         await message.answer(text=reply, reply_markup=keyboard_markup)
     else:
         reply = 'Пожалуйста укажи весь только цифрами.'
-        await message.answer(text=reply, reply_markup=keyboard_markup)
+        await message.answer(text=reply)
 
 
 @dp.callback_query_handler(state=Newbie.Goal)
@@ -199,9 +199,10 @@ async def workout_training(call: CallbackQuery, state: FSMContext):
                                    ])
     await Newbie.PhoneNumber.set()
     await state.update_data(training_times=training_times)
-    reply = f'Введи свой номер телефона для связи с трениром или можешь нажать на кнопку снизу,' \
+    reply = f'Введи свой номер телефона в формате +79***** или 89******' \
+            f' для связи с трениром или можешь нажать на кнопку снизу,' \
             f' мы получим твой номер телефона\n' \
-            f'Можешь не переживать, посторонние не узнают твой номер 😉 .'
+            f'Можешь не переживать, посторонние не узнают твой номер 😉'
     await call.message.answer(text=reply, reply_markup=keyboard)
 
 
@@ -226,7 +227,7 @@ async def user_phone_number(message: Message, state: FSMContext):
             ]
         ))
     else:
-        text = 'Пожалуйста укажи свой номер телефона только цифрами, в формате 89211234565 или +79211234565'
+        text = 'Пожалуйста укажи свой номер телефона только цифрами, в формате 89******** или +79*********'
         await message.answer(text=text, reply_markup=ReplyKeyboardMarkup(resize_keyboard=True,
                                                                          keyboard=[
                                                                              [
@@ -305,13 +306,18 @@ async def save_reg_user(call: CallbackQuery, state: FSMContext):
         id=total+1,
         progress=progress.id,
         begin=now.date(),
-        day_one=int(data['weight'])
+        day_one=(data['weight'])
     )
     await progress.update(week_1=week.id).apply()
     keyboard_markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text='На главную', callback_data='main')],
         ]
+    )
+    total = await db.func.count(UserActivity.id).gino.scalar() or 0
+    user_activity = await UserActivity.create(
+        id=total+1,
+        user= call.from_user.id
     )
     reply = 'Молодец! Это твой первый шаг к здоровому и красивому телу! ' \
             'Пока я составляю для тебя подходящую программу тренировок, можешь почитать полезную информацию в ' \
