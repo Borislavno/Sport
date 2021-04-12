@@ -212,7 +212,7 @@ class Activity(db.Model):
     user = Column(ForeignKey('users.id', ondelete='CASCADE'))
     exercise = Column(ForeignKey('exercise.id', ondelete='CASCADE'))
     repeat = Column(ForeignKey('repeats.id',ondelete='CASCADE'))
-    weight = Column(Integer())
+    weight = Column(String(5))
 
 
 async def create_db(dispatcher: Dispatcher):
